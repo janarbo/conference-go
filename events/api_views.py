@@ -3,7 +3,7 @@ from .models import Conference, Location, State
 from common.json import ModelEncoder
 from django.views.decorators.http import require_http_methods
 import json
-
+from .acls import get_photo, get_weather_data
 
 class LocationDetailEncoder(ModelEncoder):
     model = Location
@@ -13,6 +13,7 @@ class LocationDetailEncoder(ModelEncoder):
         "room_count",
         "created",
         "updated",
+        "picture_url"
     ]
 
     def get_extra_data(self, o):
@@ -121,8 +122,12 @@ def api_show_conference(request, id):
     """
     if request.method == "GET":
         conference = Conference.objects.get(id=id)
+        location = conference.location
+        state = location.state
+        city = location.city
+        weather = get_weather_data(city, state)
         return JsonResponse(
-            conference,
+            {"conference" : conference, "weather": weather},
             encoder=ConferenceDetailEncoder,
             safe=False,
         )
@@ -133,11 +138,13 @@ def api_show_conference(request, id):
         content = json.loads(request.body)
         try:
             # "name" is just a property in the content, it could be other property
-            if "name" in content:
-                conference = Conference.objects.get(name=content["name"])
-        except Conference.DoesNotExist:
+            if "location" in content:
+                location = Location.objects.get(id=content["location"])
+                content["location"] = location
+
+        except Location.DoesNotExist:
             return JsonResponse(
-                {"message": "Invalid name"},
+                {"message": "Invalid location id"},
                 status=400,
             )
 
@@ -191,10 +198,14 @@ def api_list_locations(request):
                 {"message": "Invalid state abbrevation"},
                 status=400,
             )
+
+        pic = get_photo(content["city"], content["state"])
+        content.update(pic)
+
         location = Location.objects.create(**content)
         return JsonResponse(
             location,
-            encoder=LocationDetailEncoder,
+            encoder=LocationListEncoder,
             safe=False,
         )
 

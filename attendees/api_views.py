@@ -110,11 +110,12 @@ def api_show_attendee(request, id):
         content = json.loads(request.body)
         try:
 
-            if "name" in content:
-                attendee = Attendee.objects.get(name=content["name"])
-        except Attendee.DoesNotExist:
+            if "conference" in content:
+                conference= Conference.objects.get(name=content["conference"])
+                content["conference"] = conference
+        except Conference.DoesNotExist:
             return JsonResponse(
-                {"message": "Invalid name"},
+                {"message": "Invalid conference name"},
                 status=400,
             )
 
