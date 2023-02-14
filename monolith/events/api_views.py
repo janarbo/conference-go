@@ -121,23 +121,28 @@ def api_show_conference(request, id):
     }
     """
     if request.method == "GET":
-        conference = Conference.objects.get(id=id)
-        location = conference.location
-        state = location.state
-        city = location.city
-        weather = get_weather_data(city, state)
-        return JsonResponse(
-            {"conference" : conference, "weather": weather},
-            encoder=ConferenceDetailEncoder,
-            safe=False,
-        )
+        try:
+            conference = Conference.objects.get(id=id)
+            location = conference.location
+            city = location.city
+            state = location.state
+            weather = get_weather_data(city, state)
+            return JsonResponse(
+                {"conference": conference, "weather": weather},
+                encoder=ConferenceDetailEncoder,
+                safe=False,
+            )
+        except Conference.DoesNotExist:
+            return JsonResponse(
+                {"message": "Invalid conference id"},
+                status=400,
+            )
     elif request.method == "DELETE":
         count, _ = Conference.objects.filter(id=id).delete()
         return JsonResponse({"delete": count > 0})
     else:
         content = json.loads(request.body)
         try:
-            # "name" is just a property in the content, it could be other property
             if "location" in content:
                 location = Location.objects.get(id=content["location"])
                 content["location"] = location
